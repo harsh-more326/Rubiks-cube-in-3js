@@ -54,7 +54,8 @@ function newCube(x, y, z) {
     12,
   );
   const materials = faceColors.map(
-    (color) => new THREE.MeshStandardMaterial({ color }),
+    (color) =>
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1 }),
   );
   const cube = new THREE.Mesh(geometry, materials);
   cube.position.set(x * INCREMENT, y * INCREMENT, z * INCREMENT);
@@ -127,86 +128,108 @@ let selectedCube = null;
 // Variable to track if animation is in progress
 let isAnimating = false;
 
-function onKeyDown(event) {
-  // Check if animation is in progress
-  if (isAnimating) return;
-
-  const keyCode = event.code;
-  if (selectedCube) {
-    switch (keyCode) {
-      case "KeyA":
-      case "KeyD":
-        rotateRow(selectedCube.position.y, "y", keyCode === "KeyA");
-        break;
-      case "KeyW":
-      case "KeyS":
-        rotateRow(selectedCube.position.x, "x", keyCode === "KeyW");
-        break;
-      case "KeyQ":
-      case "KeyE":
-        rotateRow(selectedCube.position.z, "z", keyCode === "KeyQ");
-        break;
-    }
-  }
-}
-
 function rotateRow(fixedCoordinate, axis, clockwise) {
-  // Set the animation flag to true
+  if (isAnimating) return;
   isAnimating = true;
 
-  const cubesToRotate = allCubes.filter((cube) => {
-    return Math.abs(cube.position[axis] - fixedCoordinate) < 0.01;
-  });
-
-  // Use a counter to track the number of completed tweens
+  const angle = clockwise ? Math.PI / 2 : -Math.PI / 2;
+  const cubesToRotate = allCubes.filter(
+    (cube) => Math.abs(cube.position[axis] - fixedCoordinate) < 0.01,
+  );
   let completedTweens = 0;
 
   cubesToRotate.forEach((cube) => {
-    const rotationTween = new TWEEN.Tween(cube.rotation);
-    const targetRotation = new THREE.Vector3();
+    const startRotation = cube.rotation.clone();
+    const endRotation = new THREE.Euler().copy(cube.rotation);
 
     switch (axis) {
       case "x":
-        targetRotation.x = clockwise
-          ? cube.rotation.x + Math.PI / 2
-          : cube.rotation.x - Math.PI / 2;
+        endRotation.x += angle;
         break;
       case "y":
-        targetRotation.y = clockwise
-          ? cube.rotation.y + Math.PI / 2
-          : cube.rotation.y - Math.PI / 2;
+        endRotation.y += angle;
         break;
       case "z":
-        targetRotation.z = clockwise
-          ? cube.rotation.z + Math.PI / 2
-          : cube.rotation.z - Math.PI / 2;
+        endRotation.z += angle;
         break;
     }
-    rotationTween
-      .to(targetRotation, 250)
+
+    new TWEEN.Tween(cube.rotation)
+      .to(
+        {
+          x: endRotation.x,
+          y: endRotation.y,
+          z: endRotation.z,
+        },
+        500,
+      )
+      .easing(TWEEN.Easing.Quadratic.InOut) // Use quadratic easing for smoother animation
       .onComplete(() => {
-        // Increment completed tweens counter
         completedTweens++;
-        // If all tweens are completed, set animation flag to false
         if (completedTweens === cubesToRotate.length) {
+          updatePositions(cubesToRotate, axis, angle);
           isAnimating = false;
         }
       })
-      .start();
+      .start(); // Start the tween animation
   });
 }
 
-function animate() {
-  requestAnimationFrame(animate);
-  TWEEN.update();
+function updatePositions(cubes, axis, angle) {
+  // Calculate the center cube's position
+  const centerCubePosition = new THREE.Vector3(1, 1, 1);
+
+  cubes.forEach((cube) => {
+    // Calculate the vector from the center cube to the current cube
+    const relativePosition = cube.position.clone().sub(centerCubePosition);
+
+    // Apply rotation to the relative position
+    relativePosition.applyAxisAngle(
+      axis === "x"
+        ? new THREE.Vector3(1, 0, 0)
+        : axis === "y"
+          ? new THREE.Vector3(0, 1, 0)
+          : new THREE.Vector3(0, 0, 1),
+      angle,
+    );
+
+    // Set the new position of the cube relative to the center cube
+    cube.position.copy(centerCubePosition.clone().add(relativePosition));
+
+    // Round the positions after applying the rotation
+    cube.position.set(
+      Math.round(cube.position.x / INCREMENT) * INCREMENT,
+      Math.round(cube.position.y / INCREMENT) * INCREMENT,
+      Math.round(cube.position.z / INCREMENT) * INCREMENT,
+    );
+  });
 }
 
-// Event listeners for keydown and keyup events
-document.addEventListener("keydown", onKeyDown);
+document.addEventListener("keydown", (event) => {
+  if (isAnimating || !selectedCube) return;
 
-// Raycaster
+  const keyCode = event.code;
+  switch (keyCode) {
+    case "KeyW":
+    case "KeyS":
+      rotateRow(selectedCube.position.x, "x", keyCode === "KeyS");
+      break;
+
+    case "KeyA":
+    case "KeyD":
+      rotateRow(selectedCube.position.y, "y", keyCode === "KeyD");
+      break;
+
+    case "KeyQ":
+    case "KeyE":
+      rotateRow(selectedCube.position.z, "z", keyCode === "KeyQ");
+      break;
+  }
+});
+
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
+
 function onClick(event) {
   mouse.x = (event.clientX / sizes.width) * 2 - 1;
   mouse.y = -(event.clientY / sizes.height) * 2 + 1;
@@ -215,44 +238,45 @@ function onClick(event) {
   const intersects = raycaster.intersectObjects(allCubes);
 
   if (intersects.length > 0) {
-    // Reset wireframe for all cubes
     allCubes.forEach((cube) => {
-      cube.material.forEach((material) => (material.wireframe = false));
+      cube.material.forEach((material) => {
+        material.opacity = 1;
+      });
     });
 
-    // Set wireframe for the clicked cube
-    const intersectedCube = intersects[0].object;
-    selectedCube = intersectedCube;
-    intersectedCube.material.forEach((material) => (material.wireframe = true));
-    console.log("Matrix values of the intersected cube:");
-    console.log(intersectedCube.matrix);
+    selectedCube = intersects[0].object;
+    selectedCube.material.forEach((material) => {
+      material.opacity = 0.7; // Adjust the opacity as needed
+    });
   }
 }
+
 canvas.addEventListener("dblclick", onClick);
-// Right-click event to reset wireframe for all cubes
+
 canvas.addEventListener("contextmenu", (event) => {
-  event.preventDefault(); // Prevent the default context menu from appearin
-  // Reset wireframe for all cubes
+  event.preventDefault();
   selectedCube = null;
 
   allCubes.forEach((cube) => {
-    cube.material.forEach((material) => (material.wireframe = false));
+    cube.material.forEach((material) => (material.opacity = 1));
   });
 });
 
-var obj = {
-  Reset: function () {
-    resetcubes();
-  },
-};
-gui.add(obj, "Reset");
-function resetcubes() {
-  for (var i = 0; i < allCubes.length; i++) {
-    scene.remove(allCubes[i]);
-  }
-  allCubes = [];
-  addcubes();
+function animate() {
+  requestAnimationFrame(animate);
+  TWEEN.update();
 }
+
+function tick() {
+  light.position.copy(camera.position);
+  controls.update();
+  renderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+
+// Start the animation loop
+animate();
+tick();
 
 // Handle window resize
 window.addEventListener("resize", () => {
@@ -264,14 +288,12 @@ window.addEventListener("resize", () => {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 });
 
-// Animation loop
-const tick = () => {
-  light.position.copy(camera.position);
-  controls.update();
-  renderer.render(scene, camera);
-  requestAnimationFrame(tick); // Request the next frame
-};
+// GUI for reset function
+const obj = { Reset: resetcubes };
+gui.add(obj, "Reset");
 
-// Start the animation loop
-animate();
-tick();
+function resetcubes() {
+  allCubes.forEach((cube) => scene.remove(cube));
+  allCubes = [];
+  addcubes();
+}
