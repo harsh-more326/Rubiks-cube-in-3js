@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import TWEEN, { remove } from "@tweenjs/tween.js";
+import TWEEN from "@tweenjs/tween.js";
 import * as dat from "lil-gui";
 
 const gui = new dat.GUI();
@@ -114,9 +114,20 @@ const renderer = new THREE.WebGLRenderer({ canvas });
 renderer.setSize(sizes.width, sizes.height);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
+// Handle window resize
+window.addEventListener('resize', () => 
+{
+  sizes.width = window.innerWidth;
+  sizes.height = window.innerHeight;
+  camera.aspect = sizes.width / sizes.height;
+  camera.updateProjectionMatrix();
+  renderer.setSize(sizes.width, sizes.height);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+});
+
 // Background - image
 const loader = new THREE.TextureLoader();
-loader.load("/background1.jpg", (texture) => {
+loader.load("/back2.png", (texture) => {
   texture.minFilter = THREE.LinearFilter;
   texture.magFilter = THREE.LinearFilter;
   scene.background = texture;
@@ -277,16 +288,6 @@ function tick() {
 // Start the animation loop
 animate();
 tick();
-
-// Handle window resize
-window.addEventListener("resize", () => {
-  sizes.width = window.innerWidth;
-  sizes.height = window.innerHeight;
-  camera.aspect = sizes.width / sizes.height;
-  camera.updateProjectionMatrix();
-  renderer.setSize(sizes.width, sizes.height);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-});
 
 // GUI for reset function
 const obj = { Reset: resetcubes };
