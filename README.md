@@ -9,12 +9,20 @@
   <th> Action </th>
 </tr>
 <tr>
+  <td> <kbd> Drag </kbd> </td>
+  <td> Move The cube </td>
+</tr>  
+<tr>
+  <td> <kbd> MouseScroll </kbd> </td>
+  <td> Zoom in and out of the cube </td>
+</tr>  
+<tr>
   <td> <kbd> DoubleClick </kbd> </td>
-  <td> Select A cubie </td>
+  <td> Select A Cubie </td>
 </tr>  
   <tr>
   <td> <kbd> RightClick </kbd> </td>
-  <td> Deselect The cubie </td>
+  <td> Deselect The Cubie </td>
 </tr>  
 <tr>
   <td> <kbd> W </kbd> , <kbd> S </kbd> </td>
