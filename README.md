@@ -3,6 +3,8 @@
 <p> you will need node_moules(node js) and vite to run this </p> 
 <a href = "https://rubiks-cube-nu.vercel.app"> Try the website</a>
 <br>
+<br>
+<br>
 <table>
 <tr>
   <th> Keys </th>
